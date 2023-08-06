@@ -6,7 +6,6 @@
   "private": true,
   "scripts": {
     "test": "jest",
-    "lint": "eslint \"src/**/*.ts\"",
     "prepare": "husky install",
     "build": "webpack --env PRODUCTION",
     "build:dev": "webpack",

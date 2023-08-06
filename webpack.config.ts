@@ -86,7 +86,7 @@ export default function(env: Record<string, any>): webpack.Configuration {
           ],
         }),
         new ESlintWebpackPlugin({
-          files: './src/**/*.ts',
+          // files: './src/**/*.ts',
         }),
         new MiniCssExtractPlugin({
           filename: production ? 'styles.[contenthash].css' : 'styles.css'

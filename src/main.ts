@@ -11,8 +11,7 @@ if (!production) {
 }
 
 async function main() {
-  const app = new Application(document.body);
-  await app.hello();
+  new Application();
 }
 
 main().catch(err => console.error(err));
