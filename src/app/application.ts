@@ -1,8 +1,10 @@
 import Stats from 'stats.js'
 
 import {OrbitControls} from 'src/controls/OrbitControls'
-
-import {BoxGeometry, DoubleSide, Mesh, MeshBasicMaterial,  PerspectiveCamera, Scene, TextureLoader, WebGLRenderer} from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
+import {} from 'three/examples/jsm/loaders/FBXLoader'
+import {BoxGeometry, DoubleSide, Mesh, MeshBasicMaterial,  PerspectiveCamera, Scene, TextureLoader, WebGLRenderer, AmbientLight, AnimationMixer, Clock, PlaneGeometry, GridHelper} from 'three';
+// import {BoxGeometry, DoubleSide, Mesh, MeshBasicMaterial,  PerspectiveCamera, Scene, TextureLoader, WebGLRenderer, PlaneBufferGeometry, GridHelper} from 'three';
 export class Application {
   private scene: Scene = new Scene();
   private camera: PerspectiveCamera = new PerspectiveCamera(75,window.innerWidth / window.innerHeight,0.1,1000);
@@ -14,11 +16,17 @@ export class Application {
 */
   private renderer: WebGLRenderer = new WebGLRenderer({antialias:true});
   private stats: Stats;
+  private gltfLoader: GLTFLoader;
+  private animationMixer: AnimationMixer = new AnimationMixer(this.scene);
+  private clock: Clock = new Clock();
 
   constructor(){
     document.body.appendChild(this.renderer.domElement)
     this.onWindowResize();
     window.addEventListener('resize',()=> this.onWindowResize())
+    
+    // 載入 glTFLoader 工具
+    this.gltfLoader = new GLTFLoader();
     
     // 載入材質
     const textureLoader = new TextureLoader();
@@ -36,14 +44,14 @@ export class Application {
    */
   /* 材質為雙面*/
   const meshBasicMaterial = new MeshBasicMaterial({map:boxTexture, side:DoubleSide})
-  
+
   const mesh = new Mesh(boxGeometry, meshBasicMaterial);
     
     // 稱呼 mesh 的名字為 box
     mesh.name ="box";
 
     // 設置環境大小與材質貼圖
-    const skyboxGeometry = new BoxGeometry (200,200,200);
+    const skyboxGeometry = new BoxGeometry (500,500,500);
     const skyboxMaterials = [
       new MeshBasicMaterial({ map: textureLoader.load('assets/texture/r.png'),side:DoubleSide}),
       new MeshBasicMaterial({ map: textureLoader.load('assets/texture/l.png'),side:DoubleSide}),
@@ -56,10 +64,10 @@ export class Application {
     skyboxMesh.name ='skyboxMesh'
 
     // 設定相機位置
-    this.camera.position.set(0,0,5);
+    this.camera.position.set(0,5,5); // 2,2,4
 
     // 在場景中置入模型與環境
-    this.scene.add(mesh);
+    // this.scene.add(mesh);
     this.scene.add(skyboxMesh);    
 
     // 生成 FPS 指示器
@@ -70,6 +78,29 @@ export class Application {
     /*滑鼠控制器 OrbitControls，左鍵拖曳；中鍵縮放；右鍵平移*/ 
     new OrbitControls(this.camera, this.renderer.domElement);
 
+    // 定義一個地面(plane)
+    const planGeometry = new PlaneGeometry(100,100);
+    // plane 材質, 為雙面
+    const plane = new Mesh(planGeometry, new MeshBasicMaterial({color: 0xFFFFFF,side:DoubleSide}));
+    // 旋轉角度(弧度) 二分之一 PI
+    plane.rotation.x = - Math.PI / 2;
+    this.scene.add(plane);
+    // add grid
+    this.scene.add(new GridHelper(100, 100));
+
+    // load gltf model
+    // this.gltfLoader.load('assets/P005Printer3_v3.glb', gltf =>{
+    this.gltfLoader.load('assets/Soldier.glb', gltf =>{
+      console.log(gltf);
+      this.scene.add(gltf.scene);
+      // add light
+      this.scene.add(new AmbientLight(0xFFFFFF,2));
+      const animationClip = gltf.animations.find(animationClip => animationClip.name === 'Walk');
+      const action = this.animationMixer.clipAction(animationClip!);
+      action.play();
+    });
+
+
     // 執行方法： render
     this.render();
   }
@@ -79,21 +110,25 @@ export class Application {
 
     // FPS 指示器開始
     this.stats.begin()
-
+   
     window.requestAnimationFrame(()=>this.render());
-    const skyboxMesh = this.scene.getObjectByName('skyboxMesh');
-    skyboxMesh!.rotation.x += 0.001
-    skyboxMesh!.rotation.y += 0.001
-    skyboxMesh!.rotation.z += 0.001
 
+    this.animationMixer.update(this.clock.getDelta());
+
+    const skyboxMesh = this.scene.getObjectByName('skyboxMesh');
+    /**/
+    // skyboxMesh!.rotation.x += 0.001
+    skyboxMesh!.rotation.y += 0.0001
+    // skyboxMesh!.rotation.z += 0.001
+    
     const box = this.scene.getObjectByName('box');    
-    /* box旋轉 */
+    /* box旋轉 
     if (box){
       box.rotation.x += 0.01;
       box.rotation.y += 0.01;
       box.rotation.z += 0.01;
     }
-    
+    */
    
    // FPS 指示器結束
    this.stats.end()

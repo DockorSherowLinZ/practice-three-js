@@ -1,0 +1,11 @@
+Model Information:
+* title:	Hammer drill
+* source:	https://sketchfab.com/3d-models/hammer-drill-215ea20f47b5497498ef7246d836cf7e
+* author:	Jinhong Jeong (https://sketchfab.com/JinhongJeong)
+
+Model License:
+* license type:	CC-BY-NC-4.0 (http://creativecommons.org/licenses/by-nc/4.0/)
+* requirements:	Author must be credited. No commercial use.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Hammer drill" (https://sketchfab.com/3d-models/hammer-drill-215ea20f47b5497498ef7246d836cf7e) by Jinhong Jeong (https://sketchfab.com/JinhongJeong) licensed under CC-BY-NC-4.0 (http://creativecommons.org/licenses/by-nc/4.0/)
