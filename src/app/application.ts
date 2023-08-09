@@ -3,7 +3,7 @@ import Stats from 'stats.js'
 import {OrbitControls} from 'src/controls/OrbitControls'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
 import {} from 'three/examples/jsm/loaders/FBXLoader'
-import {BoxGeometry, DoubleSide, Mesh, MeshBasicMaterial,  PerspectiveCamera, Scene, TextureLoader, WebGLRenderer, AmbientLight, AnimationMixer, Clock, PlaneGeometry, GridHelper} from 'three';
+import {BoxGeometry, DoubleSide, Mesh, MeshBasicMaterial,  PerspectiveCamera, Scene, TextureLoader, WebGLRenderer, AmbientLight, AnimationMixer, Clock, PlaneGeometry, GridHelper, Raycaster, Vector2, Plane,AnimationAction, Object3D, AnimationClip, MeshStandardMaterial} from 'three';
 // import {BoxGeometry, DoubleSide, Mesh, MeshBasicMaterial,  PerspectiveCamera, Scene, TextureLoader, WebGLRenderer, PlaneBufferGeometry, GridHelper} from 'three';
 export class Application {
   private scene: Scene = new Scene();
@@ -19,6 +19,8 @@ export class Application {
   private gltfLoader: GLTFLoader;
   private animationMixer: AnimationMixer = new AnimationMixer(this.scene);
   private clock: Clock = new Clock();
+  private action:any|AnimationAction;
+  private gltf: any;
 
   constructor(){
     document.body.appendChild(this.renderer.domElement)
@@ -64,7 +66,7 @@ export class Application {
     skyboxMesh.name ='skyboxMesh'
 
     // 設定相機位置
-    this.camera.position.set(0,5,5); // 2,2,4
+    this.camera.position.set(1,2,4); // 2,2,4
 
     // 在場景中置入模型與環境
     // this.scene.add(mesh);
@@ -79,32 +81,97 @@ export class Application {
     new OrbitControls(this.camera, this.renderer.domElement);
 
     // 定義一個地面(plane)
-    const planGeometry = new PlaneGeometry(100,100);
+    const planGeometry = new PlaneGeometry(10,10);
     // plane 材質, 為雙面
-    const plane = new Mesh(planGeometry, new MeshBasicMaterial({color: 0xFFFFFF,side:DoubleSide}));
+    const plane = new Mesh(planGeometry, new MeshStandardMaterial(
+      { map: textureLoader.load("assets/texture/Scifi_Floor_albedo.jpg"),
+        roughnessMap: textureLoader.load("assets/texture/Scifi_Floor_roughness.jpg"),      
+        normalMap: textureLoader.load("assets/texture/Scifi_Floor_normal.jpg"),
+        // displacementMap: textureLoader.load("assets/texture/Scifi_Floor_height.jpg"),
+        aoMap: textureLoader.load("assets/texture/Scifi_Floor_ao.jpg"),
+      side:DoubleSide}     
+    ));
+    plane.name = 'plane'; 
+    
     // 旋轉角度(弧度) 二分之一 PI
     plane.rotation.x = - Math.PI / 2;
+    plane.rotation.z = Math.PI / 2;
     this.scene.add(plane);
     // add grid
-    this.scene.add(new GridHelper(100, 100));
+    // this.scene.add(new GridHelper(100, 100));
 
     // load gltf model
-    // this.gltfLoader.load('assets/P005Printer3_v3.glb', gltf =>{
+    /* this.gltfLoader.load('assets/P005Printer3_v3.glb', gltf =>{
+        console.log(gltf);
+        this.gltf = gltf;
+        gltf.scene.name ='P005Printer3';
+        this.scene.add(gltf.scene);
+        // add light
+        this.scene.add(new AmbientLight(0xFFFFFF,2));
+    */
     this.gltfLoader.load('assets/Soldier.glb', gltf =>{
       console.log(gltf);
+      this.gltf = gltf;
+      gltf.scene.name ='Soldier';
       this.scene.add(gltf.scene);
       // add light
       this.scene.add(new AmbientLight(0xFFFFFF,2));
-      const animationClip = gltf.animations.find(animationClip => animationClip.name === 'Walk');
-      const action = this.animationMixer.clipAction(animationClip!);
-      action.play();
+      
+      // Soldier 調整 Z軸 位置 
+      gltf.scene.position.set(0,0,3)
+
+
+      // 初始播放的動作
+      const animationClip = gltf.animations.find(animationClip => animationClip.name === 'Idle');
+      this.action = this.animationMixer.clipAction(animationClip!);
+      this.action.play();
     });
 
+    // 偵測點擊事件
+    this.renderer.domElement.addEventListener('click', event => {
+      const { offsetX, offsetY } = event;
+      const x = (offsetX / window.innerWidth) * 2 - 1;
+      const y = -(offsetY / window.innerHeight) * 2 + 1;
+      const mothPoint = new Vector2(x, y);
+
+      const raycaster = new Raycaster();
+      raycaster.setFromCamera(mothPoint, this.camera);
+
+      // 設置要忽略點擊事件的物件 
+      const intersects = raycaster.intersectObjects(this.scene.children,true);
+      const intersect = intersects.filter(intersect => !(intersect.object instanceof GridHelper) && intersect.object.name !== 'plane')[0];
+      
+      // 如果被點擊時，要執行的事件
+      if(intersect && this.isClickSoldier(intersect.object)){
+        // console.log(intersect);
+        const clips = ["Idle", "Run", "Walk"];
+        const currentClipIdx = clips.findIndex(clip => clip===(this.action as AnimationAction).getClip().name);
+        const clipTargetName = clips[(currentClipIdx+1) % (clips.length)];
+        console.log(clipTargetName)
+        const animationClip = this.gltf.animations.find((animationClip:AnimationClip) => animationClip.name === clipTargetName);
+        this.action.stop();
+        this.action = this.animationMixer.clipAction(animationClip!);
+        this.action.play();
+
+        // const isRunning = (this.action as AnimationAction).isRunning();
+        // isRunning? this.action.stop() : this.action.play();
+      }
+    });
 
     // 執行方法： render
     this.render();
   }
   
+  private isClickSoldier(object: Object3D): any{
+    if(object.name === 'Soldier'){
+      return object;
+    } else if(object.parent){
+      return this.isClickSoldier(object.parent)
+    } else {
+      return null;
+    }
+  }
+
   // 方法：render
   private render(){
 
@@ -118,7 +185,7 @@ export class Application {
     const skyboxMesh = this.scene.getObjectByName('skyboxMesh');
     /**/
     // skyboxMesh!.rotation.x += 0.001
-    skyboxMesh!.rotation.y += 0.0001
+    // skyboxMesh!.rotation.y += 0.0001
     // skyboxMesh!.rotation.z += 0.001
     
     const box = this.scene.getObjectByName('box');    
@@ -144,3 +211,7 @@ export class Application {
     this.camera.updateProjectionMatrix();
   }
 }
+function loadTexture(arg0: string) {
+  throw new Error('Function not implemented.');
+}
+
